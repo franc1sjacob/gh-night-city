@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lofi City Claude</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#141413; --fg:#e6edf3; --muted:#7d8590; --line:#30363d; --panel:#161b22; }
+  body.light { --bg:#faf9f5; --fg:#1f2328; --muted:#656d76; --line:#d0d7de; --panel:#f6f8fa; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif; }
+  main { max-width:880px; margin:0 auto; padding:32px 16px 64px; }
+  header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:28px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0; }
+  button { background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:5px 12px; cursor:pointer; font:inherit; font-size:12px; white-space:nowrap; }
+  canvas { display:block; width:100%; height:auto; border-radius:6px; }
+  .phase { color:var(--muted); font-size:12px; margin-top:10px; min-height:18px; }
+  .controls { display:flex; gap:8px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Lofi night city: a rider on the last train</h1>
+      <p class="sub">Warm clay, cream and near-black, flat fills, no gradients or glow. Toggle to compare with green squares.</p>
+    </div>
+    <div class="controls"><button id="pause">Pause</button><button id="size">Train: large</button><button id="rider">Rider: on the roof</button><button id="rsize">Rider: normal</button><button id="sq">Green squares</button><button id="theme">Light mode</button></div>
+  </header>
+  <canvas id="c"></canvas>
+  <div class="phase" id="phase"></div>
+</main>
+
+<script>
+const DATA = __DATA__;
+const weeks = DATA.weeks, W = weeks.length;
+const sums = weeks.map(w => w.c.reduce((a, b) => a + b, 0)), maxSum = Math.max(...sums);
+
+const PAL = {
+  dark:  { bg:'#1f1e1d', night:'#181715', cells:['#262624','#4a2f24','#7a3f2a','#b4563a','#d97757'], green:['#262624','#0e4429','#006d32','#26a641','#39d353'], dimCell:'#2b2926',
+           city:'#2b2926', cityEdge:'#353230', win:'#d4a27f', star:'#c2c0b6', moon:'#f2cf73', rain:'240,238,230', cloud:'#2b2926',
+           train:'#45413b', trainRoof:'#56514a', stripe:'#d97757', head:'#f0eee6', bridge:'#2b2926', pole:'#100f0e', sil:'#3d3935', hoodie:'#e8dcc4', hoodieShade:'#c9bba1', skin:'#e2bd9a', hair:'#3a3029', pants:'#5c544b', blush:'#e8a88e', cup:'#252220', steam:'#c2c0b6', signal:'#e5534b', board:'#141413', screen:'#cfe8c4', code:['#d97757','#d4a27f','#8fb98a','#c2c0b6'], ground:'#353230', grain:'255,250,240', note:'#d4a27f', cat:'#141413' },
+  light: { bg:'#faf9f5', night:'#f0eee6', cells:['#ece9df','#f2d5c6','#e8a88e','#d97757','#b4532f'], green:['#ece9df','#9be9a8','#40c463','#30a14e','#216e39'], dimCell:'#e8e6dc',
+           city:'#e3e0d5', cityEdge:'#d6d2c4', win:'#d97757', star:'#b0aea5', moon:'#e0a93b', rain:'90,85,75', cloud:'#f0eee6',
+           train:'#cdc8b8', trainRoof:'#bdb7a5', stripe:'#d97757', head:'#fffdf6', bridge:'#e3e0d5', pole:'#8f8b80', sil:'#8f8b80', hoodie:'#5f584f', hoodieShade:'#4a443c', skin:'#d4a684', hair:'#2e2620', pants:'#8f877b', blush:'#e08f75', cup:'#3d3929', steam:'#8f8b80', signal:'#cf222e', board:'#3d3929', screen:'#e9f5e3', code:['#d97757','#b4532f','#5a8f55','#8f8b80'], ground:'#d6d2c4', grain:'60,50,40', note:'#c15f3c', cat:'#8f8b80' },
+};
+let RIDER = 1; const RIDER_SIZES = [[1, "Rider: normal"], [1.3, "Rider: bigger"], [1.6, "Rider: biggest"]]; let riderIx = 0;
+let useGreen = false, coderMode = 2, TS = 1.8, riderMode = 0;
+const SIZES = [[1, 'Train: small'], [1.4, 'Train: medium'], [1.8, 'Train: large']]; let sizeIx = 2;
+const CODER_NAMES = ['Coder: on the roof', 'Coder: screen-lit window', 'Coder: none'];
+const sq = () => useGreen ? P.green : P.cells;
+let P = PAL.dark, paused = false, pauseAt = 0, offset = 0;
+document.getElementById('theme').onclick = e => { const l = document.body.classList.toggle('light'); P = l ? PAL.light : PAL.dark; e.target.textContent = l ? 'Dark mode' : 'Light mode'; };
+document.getElementById('sq').onclick = e => { useGreen = !useGreen; e.target.textContent = useGreen ? 'Clay squares' : 'Green squares'; };
+document.getElementById('size').onclick = e => { sizeIx = (sizeIx + 1) % 3; TS = SIZES[sizeIx][0]; e.target.textContent = SIZES[sizeIx][1]; };
+document.getElementById('rider').onclick = e => { riderMode = 1 - riderMode; e.target.textContent = riderMode ? 'Rider: in a window' : 'Rider: on the roof'; };
+document.getElementById('rsize').onclick = e => { riderIx = (riderIx + 1) % 3; RIDER = RIDER_SIZES[riderIx][0]; e.target.textContent = RIDER_SIZES[riderIx][1]; };
+document.getElementById('pause').onclick = e => { paused = !paused; if (paused) pauseAt = performance.now(); else offset += performance.now() - pauseAt; e.target.textContent = paused ? 'Play' : 'Pause'; };
+
+const CS = 12, PITCH = 14, LEFT = 10, SKY = 84, DECK = SKY + 24, GTOP = DECK + 10, GH = 7 * PITCH - 2, CH = GTOP + GH + 10;
+const CW = LEFT * 2 + W * PITCH - 2;
+const canvas = document.getElementById('c'), dpr = window.devicePixelRatio || 1;
+canvas.width = CW * dpr; canvas.height = CH * dpr; canvas.style.aspectRatio = CW + '/' + CH;
+const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+const colX = i => LEFT + i * PITCH;
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const rand = s => { const x = Math.sin(s * 127.1) * 43758.5453; return x - Math.floor(x); };
+const hex = c => [1, 3, 5].map(k => parseInt(c.slice(k, k + 2), 16));
+const mix = (a, b, k) => { const A = hex(a), B = hex(b); return 'rgb(' + A.map((v, j) => Math.round(v + (B[j] - v) * k)).join(',') + ')'; };
+
+const city = sums.map((s, i) => {
+  const h = 10 + Math.sqrt(s / maxSum) * (SKY - 22);
+  const wins = []; for (let y = 5; y < h - 3; y += 5) for (let x = 3; x < PITCH - 3; x += 5) wins.push({ x, y, on: rand(i * 91 + x * 7 + y) < .12 + .5 * Math.sqrt(s / maxSum) });
+  return { h, wins, roof: rand(i + 3) < .3 };
+});
+const tallest = sums.indexOf(maxSum);
+const catAt = (() => { const order = [...sums.keys()].sort((a, b) => sums[b] - sums[a]); return order.find(i => Math.abs(i - tallest) > 4) ?? tallest; })();
+const musicAt = [...sums.keys()].sort((a, b) => sums[b] - sums[a])[2];
+const boardAt = (() => { let best = 24; for (let i = 24; i < 38; i++) if (i !== catAt && sums[i] > sums[best]) best = i; return best; })();
+const longest = (() => { let b = 0, c = 0; for (const w of weeks) for (const v of w.c) { c = v > 0 ? c + 1 : 0; b = Math.max(b, c); } return b; })();
+const coderAt = (() => { let best = -1;
+  for (let i = 1; i < W - 1; i++) { if ([catAt, boardAt, tallest].includes(i)) continue;
+    if (city[i].h > city[i - 1].h + 5 && city[i].h > city[i + 1].h + 5 && (best < 0 || city[i].h > city[best].h)) best = i; }
+  return best < 0 ? musicAt : best; })();
+const SIGN = 'coding 24/7  \u00b7  ';
+const POLES = [70, 300, 530, 745];
+const crows = [{ span: 0, at: .55 }, { span: 2, at: .35 }, { span: 2, at: .42 }];
+const stars = Array.from({ length: 55 }, (_, k) => ({ x: rand(k) * CW, y: 3 + rand(k + 300) * (SKY - 16), p: rand(k + 600) * 6 }));
+const clouds = [{ y: 18, w: 90, s: 6, o: 0 }, { y: 34, w: 60, s: 9, o: 350 }, { y: 12, w: 70, s: 4, o: 620 }];
+const drops = Array.from({ length: 70 }, (_, k) => ({ x: rand(k + 40), o: rand(k + 80), v: .8 + rand(k + 120) * .5 }));
+
+const T_DAY = 2.5, T_DUSK = 1.8, T_ON = 4, T_NIGHT = 13, T_DAWN = 1.8, CYC = T_DAY + T_DUSK + T_ON + T_NIGHT + T_DAWN;
+const phaseEl = document.getElementById('phase');
+
+function cat(x, y, t) { // a small sitting cat with a swishing tail
+  ctx.fillStyle = P.sil; ctx.strokeStyle = P.sil; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.ellipse(x, y - 3.5, 3.2, 3.8, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + .5, y - 8.5, 2.4, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x - 1.6, y - 10); ctx.lineTo(x - 1.2, y - 12.6); ctx.lineTo(x + .2, y - 10.6); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x + 1, y - 10.6); ctx.lineTo(x + 2.6, y - 12.6); ctx.lineTo(x + 2.8, y - 9.8); ctx.fill();
+  const sw = Math.sin(t * 1.4) * 3; ctx.beginPath(); ctx.moveTo(x - 2.5, y - 1); ctx.quadraticCurveTo(x - 7, y - 1, x - 7 + sw * .4, y - 6 - sw * .3); ctx.stroke();
+}
+
+// crescent drawn once off-screen: full disc, then the bite erased, so no ring is left along the dark edge
+const moonCache = {};
+function moonImg(color) {
+  if (moonCache[color]) return moonCache[color];
+  const m = document.createElement('canvas'); m.width = m.height = 24 * dpr;
+  const g = m.getContext('2d'); g.scale(dpr, dpr); g.translate(12, 12); g.rotate(-.35);
+  g.fillStyle = color; g.beginPath(); g.arc(0, 0, 9, 0, 7); g.fill();
+  g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(-4.5, -1, 8.6, 0, 7); g.fill();
+  return moonCache[color] = m;
+}
+
+// the rider: chibi proportions, drawn around (0,0) = where they sit on the roof, y up is negative
+function drawRider(t) {
+  const bob = Math.sin(t * 2) * .25, R = (x, y, w, h, r = 0) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); };
+  // mug of coffee beside them, with a curl of steam
+  ctx.fillStyle = P.stripe; R(-8.4, -2.6, 2.2, 2.6, [.3, .3, .5, .5]);
+  ctx.strokeStyle = P.stripe; ctx.lineWidth = .4; ctx.beginPath(); ctx.arc(-6.1, -1.4, .7, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+  ctx.strokeStyle = P.steam; ctx.lineWidth = .35;
+  for (let k = 0; k < 2; k++) { const ph = (t * .5 + k * .5) % 1; ctx.globalAlpha = Math.sin(ph * Math.PI) * .7;
+    ctx.beginPath(); ctx.moveTo(-7.6 + k * .9, -3 - ph * 3); ctx.quadraticCurveTo(-8.3 + k * .9, -3.8 - ph * 3, -7.5 + k * .9, -4.6 - ph * 3); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  // facing the viewer: crossed legs and shoes
+  ctx.fillStyle = P.pants; ctx.beginPath(); ctx.ellipse(0, -1.1, 4.6, 1.4, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = P.hair; ctx.beginPath(); ctx.ellipse(-4.2, -.8, 1, .7, 0, 0, 7); ctx.ellipse(4.2, -.8, 1, .7, 0, 0, 7); ctx.fill();
+  // plain t-shirt: body, short sleeves, bare forearms reaching to the keyboard
+  ctx.fillStyle = P.skin; R(-3.5, -5.6, 1.2, 3.7, .5); R(2.3, -5.6, 1.2, 3.7, .5); // forearms (behind the sleeves)
+  ctx.fillStyle = P.hoodie; ctx.beginPath(); // one flat shape: square shoulders, short straight sleeves, straight body
+  ctx.moveTo(-2.4, -7.9); ctx.lineTo(2.4, -7.9); ctx.lineTo(3.7, -7.2); ctx.lineTo(3.7, -5.3); ctx.lineTo(2.7, -5.3);
+  ctx.lineTo(2.7, -1); ctx.lineTo(-2.7, -1); ctx.lineTo(-2.7, -5.3); ctx.lineTo(-3.7, -5.3); ctx.lineTo(-3.7, -7.2); ctx.closePath(); ctx.fill();
+  // laptop on the lap: we see the back of the lid, with a small glowing dot
+  ctx.fillStyle = P.board; R(-3.1, -5.4, 6.2, 4, .4); R(-3.5, -1.7, 7, .6, .3);
+  ctx.globalAlpha = .7 + .3 * Math.sin(t * 2); ctx.fillStyle = P.screen; ctx.beginPath(); ctx.arc(0, -3.4, .45, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+  // head: neck, face, hair with bangs and sides
+  const hy = -10.1 + bob; // head sits right on the hood, no neck
+  ctx.fillStyle = P.skin;
+  ctx.beginPath(); ctx.arc(0, hy, 3, 0, 7); ctx.fill();
+  ctx.globalAlpha = .18; ctx.fillStyle = P.screen; ctx.beginPath(); ctx.arc(0, hy + 1.4, 2.2, 0, Math.PI); ctx.fill(); ctx.globalAlpha = 1; // screen light on the chin
+  // short hair that follows the round head: a smooth cap with a soft, slightly uneven fringe
+  ctx.fillStyle = P.hair; ctx.beginPath(); ctx.arc(0, hy, 3.2, Math.PI * 1.08, Math.PI * 1.92); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, hy, 3.2, Math.PI, Math.PI * 2); ctx.closePath(); ctx.fill();
+  for (const [fx, fr] of [[-2.1, .95], [-.8, 1.05], [.6, .95], [1.9, .9]]) { ctx.beginPath(); ctx.arc(fx, hy - .25, fr, 0, Math.PI * 2); ctx.fill(); } // soft fringe
+  ctx.beginPath(); ctx.arc(.6, hy - 3.1, .8, 0, 7); ctx.fill(); // one little cowlick on top
+  // face: relaxed closed eyes, a small mouth
+  ctx.strokeStyle = P.hair; ctx.lineWidth = .35; ctx.lineCap = 'round';
+  for (const ex of [-1.15, 1.15]) { ctx.beginPath(); ctx.arc(ex, hy + .9, .5, .25, Math.PI - .25); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(-.35, hy + 2); ctx.lineTo(.35, hy + 2); ctx.stroke();
+  // headphones: band over the top, a cup on each side
+  ctx.strokeStyle = P.stripe; ctx.lineWidth = .75; ctx.lineCap = 'butt'; ctx.beginPath(); ctx.arc(0, hy - .3, 3.6, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+  ctx.fillStyle = P.stripe; R(-4.2, hy - .6, 1.4, 2.7, .6); R(2.8, hy - .6, 1.4, 2.7, .6);
+  // music drifting up behind them
+  if (night > .9) { ctx.fillStyle = P.note; ctx.font = '4px serif';
+    for (let k = 0; k < 2; k++) { const ph = ((t * .35 + k / 2) % 1); ctx.globalAlpha = Math.sin(ph * Math.PI) * .9;
+      ctx.fillText(k ? '\u266A' : '\u266B', -4 - ph * 7, -13 - ph * 6); }
+    ctx.globalAlpha = 1; }
+}
+let night = 0;
+
+function frame(ms) {
+  const t = ((paused ? pauseAt : ms) - offset) / 1000, T = t % CYC;
+  const a1 = T_DAY, a2 = a1 + T_DUSK, a3 = a2 + T_ON, a4 = a3 + T_NIGHT;
+  night = T < a1 ? 0 : T < a2 ? ease((T - a1) / T_DUSK) : T < a4 ? 1 : 1 - ease((T - a4) / T_DAWN);
+  phaseEl.textContent = T < a1 ? 'Evening: just your squares' : T < a2 ? 'Dusk: the skyline rises, lights go out' : T < a3 ? 'Lights come on, week by week' : T < a4 ? 'Night: the crossing blinks as the last train passes; someone is still coding' : 'Dawn: the skyline sinks';
+
+  // flat sky: one fill, a touch darker at night
+  ctx.fillStyle = P.bg; ctx.fillRect(0, 0, CW, CH);
+  ctx.globalAlpha = night; ctx.fillStyle = P.night; ctx.fillRect(0, 0, CW, CH); ctx.globalAlpha = 1;
+
+  ctx.fillStyle = P.star;
+  for (const s of stars) { ctx.globalAlpha = (.15 + .5 * night) * (.5 + .5 * Math.sin(t * 1.6 + s.p)); ctx.fillRect(s.x, s.y, 1, 1); }
+  ctx.globalAlpha = .4 + .6 * night; ctx.fillStyle = P.moon;
+  ctx.drawImage(moonImg(P.moon), CW - 40 - 12, 22 - 12, 24, 24); ctx.globalAlpha = 1; // crescent moon
+
+  // slow clouds
+  for (const c of clouds) {
+    const x = ((c.o + t * c.s) % (CW + c.w * 2)) - c.w;
+    ctx.globalAlpha = 1; ctx.fillStyle = P.cloud;
+    ctx.beginPath(); ctx.roundRect(x, c.y, c.w, 7, 4); ctx.roundRect(x + c.w * .2, c.y - 4, c.w * .45, 8, 4); ctx.fill(); ctx.globalAlpha = 1;
+  }
+
+  const riseOf = i => ease(clamp(night * 1.6 - (i / W) * .6));
+  const topOf = i => DECK - city[i].h * riseOf(i);
+  const lightsOf = i => T >= a2 ? clamp((T - a2 - (i / W) * (T_ON - .8)) / .5) * night : 0;
+
+  // skyline rises from behind the squares
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, CW, DECK); ctx.clip();
+  city.forEach((b, i) => {
+    const rise = ease(clamp(night * 1.6 - (i / W) * .6)); if (rise <= 0) return;
+    const x = colX(i) - 1, top = DECK - b.h * rise;
+    ctx.fillStyle = P.city; ctx.fillRect(x, top, PITCH, b.h + 1);
+    ctx.fillStyle = P.cityEdge; ctx.fillRect(x, top, PITCH, 1);
+    if (b.roof) ctx.fillRect(x + 4, top - 3, PITCH - 8, 3);
+    const lightsOn = T >= a2 ? clamp((T - a2 - (i / W) * (T_ON - .8)) / .5) * night : 0;
+    for (const wn of b.wins) if (wn.on && lightsOn > 0) {
+      const flick = rand(i * 13 + wn.x * 3 + wn.y + Math.floor(t * 1.2)) > .985 ? .2 : 1;
+      ctx.globalAlpha = lightsOn * flick * .85; ctx.fillStyle = P.win; ctx.fillRect(x + wn.x, top + wn.y, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+    if (i === catAt && rise > .98) cat(x + PITCH / 2 + 1, top - (b.roof ? 3 : 0), t);
+  });
+
+  // (6) the late-night coder, three variants to compare
+  { const i = coderAt, lo = lightsOf(i), bx = colX(i) - 1, top = topOf(i);
+    let nx = null, ny = null;
+    if (riseOf(i) > .98 && coderMode === 0) { // sitting on the roof edge with a laptop, legs over the side
+      const sx = bx + 4, sy = top;
+      ctx.fillStyle = P.sil;
+      ctx.fillRect(sx - 1, sy, 1.4, 4); ctx.fillRect(sx + 1, sy, 1.4, 4.4); // legs
+      ctx.beginPath(); ctx.roundRect(sx - 1.5, sy - 5, 4, 5.2, [1.5, 1.5, 0, 0]); ctx.fill(); // body
+      ctx.beginPath(); ctx.arc(sx + .5, sy - 6.8 + Math.sin(t * 1.1) * .2, 1.7, 0, 7); ctx.fill(); // head
+      ctx.fillStyle = P.board; ctx.fillRect(sx + 2, sy - 1.2, 4, 1); // laptop base
+      ctx.globalAlpha = lo * (.85 + .15 * Math.sin(t * 7)); ctx.fillStyle = P.screen; ctx.fillRect(sx + 4.6, sy - 4.2, 1, 3.2); ctx.globalAlpha = 1; // screen
+      nx = sx + 6; ny = sy - 6;
+    }
+    if (riseOf(i) > .98 && coderMode === 1) { // one window lit by a screen, not lamp light
+      const wx = bx + 5, wy = top + 14;
+      ctx.fillStyle = P.city; ctx.fillRect(wx - 1, wy - 1, 5, 5);
+      ctx.globalAlpha = lo * (.75 + .25 * Math.sin(t * 5) * Math.sin(t * 1.7)); ctx.fillStyle = P.screen; ctx.fillRect(wx, wy, 3, 3); ctx.globalAlpha = 1;
+      nx = wx + 3; ny = wy - 2;
+    }
+    if (nx !== null && lo > .9) { ctx.fillStyle = P.note; ctx.font = '9px serif';
+      for (let k = 0; k < 3; k++) { const ph = ((t * .4 + k / 3) % 1); ctx.globalAlpha = Math.sin(ph * Math.PI) * .9;
+        ctx.fillText(k % 2 ? '\u266A' : '\u266B', nx + ph * 18 + Math.sin(ph * 9 + k) * 3, ny - ph * 28); }
+      ctx.globalAlpha = 1; }
+  }
+
+  // (5) rooftop billboard scrolling dev text
+  { const i = boardAt, x = colX(i) + PITCH / 2 - 26, top = topOf(i), lo = lightsOf(i);
+    if (riseOf(i) > .02) {
+      const by = top - 17, bx = colX(i) - 1;
+      ctx.fillStyle = P.cityEdge; ctx.fillRect(bx + 2, by + 11, 2, 6); ctx.fillRect(bx + PITCH - 4, by + 11, 2, 6); ctx.fillRect(bx + 1, by + 14, PITCH - 2, 1.2); // roof frame
+      ctx.fillStyle = P.cityEdge; ctx.fillRect(x, by, 52, 12);
+      ctx.fillStyle = P.board; ctx.fillRect(x + 1.5, by + 1.5, 49, 9);
+      if (lo > 0) {
+        const flick = rand(Math.floor(t * 3) + 77) > .96 ? .35 : 1; // the odd neon flicker
+        ctx.save(); ctx.beginPath(); ctx.rect(x + 2, by + 1.5, 48, 9); ctx.clip();
+        ctx.font = '700 7px "JetBrains Mono", ui-monospace, Menlo, monospace'; ctx.fillStyle = P.stripe; ctx.globalAlpha = lo * flick;
+        const wTxt = ctx.measureText(SIGN).width, off = (t * 10) % wTxt;
+        for (let k = 0; k < 3; k++) ctx.fillText(SIGN, x + 2 - off + k * wTxt, by + 8.3);
+        ctx.restore(); ctx.globalAlpha = 1;
+      }
+    } }
+  ctx.restore();
+
+  // (2) power lines: poles in front of the city, sagging wires, a few crows
+  ctx.globalAlpha = night;
+  ctx.strokeStyle = P.pole; ctx.lineWidth = .8;
+  const wireY = [30, 35];
+  const sag = (x0, x1, y, k) => { const m = (x0 + x1) / 2, d = (x1 - x0) * .06; return { y: y + 4 * d * k * (1 - k), x: x0 + (x1 - x0) * k, m, d }; };
+  const spans = [[-40, POLES[0]], ...POLES.slice(1).map((p, j) => [POLES[j], p]), [POLES[POLES.length - 1], CW + 40]];
+  for (const [x0, x1] of spans) for (const y of wireY) { const d = (x1 - x0) * .06; ctx.beginPath(); ctx.moveTo(x0, y); ctx.quadraticCurveTo((x0 + x1) / 2, y + d * 2, x1, y); ctx.stroke(); }
+  ctx.fillStyle = P.pole;
+  for (const px of POLES) { ctx.fillRect(px - 1, wireY[0] - 6, 2, DECK - wireY[0] + 6); ctx.fillRect(px - 7, wireY[0] - 1, 14, 1.6); ctx.fillRect(px - 5, wireY[1] - 1, 10, 1.4); }
+  for (const c of crows) { const [x0, x1] = spans[c.span + 1], p = sag(x0, x1, wireY[0], c.at), bob = Math.sin(t * 1.3 + c.at * 9) * .3;
+    const cx = p.x, cy = p.y - .4;
+    ctx.beginPath(); ctx.ellipse(cx, cy - 2.2, 2.2, 1.7, -.2, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 1.8, cy - 3.8 + bob, 1.2, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx + 2.8, cy - 3.9 + bob); ctx.lineTo(cx + 4.2, cy - 3.6 + bob); ctx.lineTo(cx + 2.8, cy - 3.3 + bob); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx - 1.8, cy - 2); ctx.lineTo(cx - 4, cy - 1); ctx.lineTo(cx - 1.5, cy - 1.2); ctx.fill(); }
+  ctx.globalAlpha = 1;
+
+  // squares: active days only, like the space shooter; dark at dusk, then lit with a soft glow
+  weeks.forEach((w, i) => w.l.forEach((l, k) => {
+    if (!l) return;
+    const r = w.wd + k, x = colX(i), y = GTOP + r * PITCH;
+    let on = 1;
+    if (night > 0) {
+      if (T < a2) on = 1 - night;
+      else if (T < a4) { on = clamp((T - a2 - (i / W) * (T_ON - .8) - rand(i * 7 + r) * .35) / .3); if (T >= a3 && rand(i * 7 + r + Math.floor(t * 1.4) * 1000) > .993) on = .35; }
+    }
+    ctx.fillStyle = mix(P.dimCell, sq()[l], on);
+    ctx.beginPath(); ctx.roundRect(x, y, CS, CS, 2.5); ctx.fill();
+  }));
+
+  // elevated track between the city and the squares; it appears with the skyline
+  ctx.globalAlpha = night;
+  ctx.fillStyle = P.bridge; ctx.fillRect(0, DECK, CW, 4);
+  ctx.fillStyle = P.ground; ctx.fillRect(0, DECK - 1.5, CW, 1.5);
+  for (let x = 0; x < CW; x += 6) ctx.fillRect(x, DECK, 3, 1.5);
+  ctx.globalAlpha = 1;
+
+  // (1) railway crossing signal: blinks while the train is near
+  { const sx = CW - 70, trainTp = (T - a2 - 1.2) / 15, len = (4 * 38 + 6) * TS, nose = -len - 20 + trainTp * (CW + len + 40) + len, tail = nose - len;
+    const near = trainTp > 0 && trainTp < 1 && nose > sx - 140 && tail < sx + 30;
+    ctx.globalAlpha = night; ctx.fillStyle = P.pole;
+    ctx.fillRect(sx - .75, DECK - 27, 1.5, 27);
+    ctx.save(); ctx.translate(sx, DECK - 27); for (const r of [.7, -.7]) { ctx.save(); ctx.rotate(r); ctx.fillRect(-5, -.8, 10, 1.6); ctx.restore(); } ctx.restore();
+    ctx.fillRect(sx - 6, DECK - 20.5, 12, 1.5);
+    const blink = Math.floor(t * 2.4) % 2;
+    for (const [dx, on] of [[-4.5, blink === 0], [4.5, blink === 1]]) {
+      ctx.fillStyle = P.pole; ctx.beginPath(); ctx.arc(sx + dx, DECK - 17.5, 2.3, 0, 7); ctx.fill();
+      ctx.fillStyle = near && on ? P.signal : P.cityEdge; ctx.beginPath(); ctx.arc(sx + dx, DECK - 17.5, 1.5, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1; }
+
+  // the late train, drawn in its own units and scaled by TS; one passenger with headphones and a laptop
+  const TRAIN_T = 15, tp = (T - a2 - 1.2) / TRAIN_T; // slow, unhurried crossing
+  if (tp > 0 && tp < 1) {
+    const CAR = 38, GAP = 2, len = 4 * CAR + 3 * GAP, slen = len * TS, tx = -slen - 20 + tp * (CW + slen + 40), top = -12.5;
+    ctx.save(); ctx.translate(tx, DECK); ctx.scale(TS, TS);
+    for (let c = 0; c < 4; c++) {
+      const cx = c * (CAR + GAP), front = c === 3, rider = c === 1;
+      if (c < 3) { ctx.fillStyle = P.trainRoof; ctx.fillRect(cx + CAR, top + 4, GAP, 4); }
+      ctx.fillStyle = P.trainRoof; ctx.fillRect(cx + 3, top - 1, CAR - (front ? 9 : 6), 1.5);
+      ctx.fillStyle = P.train; ctx.beginPath(); ctx.roundRect(cx, top, CAR, 10, front ? [2, 6, 1.5, 2] : 2); ctx.fill();
+      ctx.fillStyle = P.win;
+      for (let k = 0; k < (front ? 4 : 5); k++) { if (rider && riderMode === 1 && (k === 1 || k === 2)) continue; ctx.fillRect(cx + 3 + k * 6.6, top + 2.5, 4, 3); }
+      if (front) { ctx.beginPath(); ctx.moveTo(cx + CAR - 8, top + 2.5); ctx.lineTo(cx + CAR - 4, top + 2.5); ctx.lineTo(cx + CAR - 2, top + 5.5); ctx.lineTo(cx + CAR - 8, top + 5.5); ctx.fill();
+        ctx.fillStyle = P.head; ctx.fillRect(cx + CAR - 2, top + 6.5, 1.5, 1.5); }
+      ctx.fillStyle = P.stripe; ctx.fillRect(cx + 1, top + 7, CAR - (front ? 3 : 2), 1);
+      ctx.fillStyle = P.pole; for (const wx of [6, 11, CAR - 11, CAR - 6]) { ctx.beginPath(); ctx.arc(cx + wx, -2, 1.4, 0, 7); ctx.fill(); }
+
+      if (rider && riderMode === 1) { // seen through a wider window: head, headphones, laptop
+        const wx = cx + 9.6, wy = top + 2;
+        ctx.fillStyle = P.win; ctx.fillRect(wx, wy, 10.6, 4);
+        ctx.fillStyle = P.board;
+        ctx.beginPath(); ctx.arc(wx + 3.4, wy + 1.7, 1.15, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(wx + 1.6, wy + 2.8, 3.6, 1.2, [.8, .8, 0, 0]); ctx.fill();
+        ctx.fillRect(wx + 6.4, wy + 1, .5, 2.6); ctx.fillRect(wx + 5.2, wy + 3.4, 2.2, .5); // laptop lid + base
+        ctx.globalAlpha = .8 + .2 * Math.sin(t * 4); ctx.fillStyle = P.screen; ctx.fillRect(wx + 6.95, wy + 1.2, .45, 2.2); ctx.globalAlpha = 1;
+        ctx.strokeStyle = P.stripe; ctx.lineWidth = .4; ctx.beginPath(); ctx.arc(wx + 3.4, wy + 1.6, 1.55, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+        ctx.fillStyle = P.stripe; ctx.fillRect(wx + 1.75, wy + 1.4, .55, .9); ctx.fillRect(wx + 4.5, wy + 1.4, .55, .9);
+      }
+      if (rider && riderMode === 0) { ctx.save(); ctx.translate(cx + 18, top - 1); ctx.scale(RIDER, RIDER); drawRider(t); ctx.restore(); }
+    }
+    ctx.restore();
+  }
+
+  // drizzle
+  if (night > 0) {
+    ctx.strokeStyle = 'rgba(' + P.rain + ',' + (.28 * night) + ')'; ctx.lineWidth = .8; ctx.beginPath();
+    for (const d of drops) { const y = ((d.o + t * d.v * .55) % 1) * (CH + 20) - 10, x = (d.x * (CW + 40) - y * .25 + CW) % CW; ctx.moveTo(x, y); ctx.lineTo(x - 1.5, y + 6); }
+    ctx.stroke();
+  }
+
+  // film grain
+  for (let k = 0; k < 260; k++) { ctx.fillStyle = 'rgba(' + P.grain + ',' + (Math.random() * .045) + ')'; ctx.fillRect(Math.random() * CW, Math.random() * CH, 1, 1); }
+
+  requestAnimationFrame(frame);
+}
+document.fonts.load('700 7px "JetBrains Mono"').finally(() => requestAnimationFrame(frame));
+</script>
+</body>
+</html>
