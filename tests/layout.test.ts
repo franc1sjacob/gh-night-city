@@ -58,3 +58,13 @@ describe('buildLayout', () => {
     expect(buildLayout(sample)).toEqual(buildLayout(sample));
   });
 });
+
+import { squareOn, squareWave, squaresDusk } from '../src/scene/timeline.js';
+describe('square timing split', () => {
+  it('dusk times wave equals squareOn everywhere except the instant at T_ON', () => {
+    for (let t = 0; t < 23.1; t += 0.05) {
+      if (Math.abs(t - 6.1) < 0.06) continue;
+      for (const [w, r] of [[0, 0], [20, 3], [52, 6]]) expect(squaresDusk(t) * squareWave(t, w, r, 53)).toBeCloseTo(squareOn(t, w, r, 53), 6);
+    }
+  });
+});

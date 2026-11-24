@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock vs SVG</title>
+<style>
+  body { margin: 0; padding: 16px; background: #111; color: #ccc; font: 13px system-ui, sans-serif; }
+  .bar { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+  input[type=range] { width: 420px; }
+  iframe { width: 100%; height: 330px; border: 0; background: #000; }
+  .svg svg { width: 100%; height: auto; display: block; }
+  h2 { font-size: 12px; font-weight: 600; margin: 12px 0 6px; color: #888; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <label>t <input id="t" type="range" min="0" max="23.09" step="0.01" value="12"></label><span id="tv">12.00 s</span>
+  <label><select id="theme"><option>dark</option><option>light</option></select></label>
+</div>
+<h2>Mock (canvas)</h2>
+<iframe id="mock" src="mock.html"></iframe>
+<h2>SVG</h2>
+<div class="svg" id="svg"></div>
+<script>
+// Served from out/ (see scripts/render-sample.ts). Seeks both renderings to the same second of the loop.
+const tEl = document.getElementById('t'), themeEl = document.getElementById('theme'), box = document.getElementById('svg');
+async function load() {
+  box.innerHTML = await (await fetch(`sample-${themeEl.value}.svg?${Date.now()}`)).text();
+  const mw = document.getElementById('mock').contentWindow;
+  if (mw.eval) mw.eval(`P = PAL.${themeEl.value}; document.body.classList.toggle('light', ${themeEl.value === 'light'});`);
+  seek();
+}
+function seek() {
+  const t = +tEl.value;
+  document.getElementById('tv').textContent = t.toFixed(2) + ' s';
+  for (const a of document.getAnimations()) { a.pause(); a.currentTime = t * 1000; }
+  const mw = document.getElementById('mock').contentWindow;
+  if (mw.eval) mw.eval(`paused = true; pauseAt = performance.now(); offset = pauseAt - ${t * 1000};`);
+}
+tEl.oninput = seek; themeEl.onchange = load;
+document.getElementById('mock').onload = load;
+window.seekTo = (t, theme) => { tEl.value = t; if (theme && theme !== themeEl.value) { themeEl.value = theme; return load(); } seek(); };
+</script>
+</body>
+</html>
