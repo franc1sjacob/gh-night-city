@@ -48,8 +48,8 @@ const PAL = {
            train:'#cdc8b8', trainRoof:'#bdb7a5', stripe:'#d97757', head:'#fffdf6', bridge:'#e3e0d5', pole:'#8f8b80', sil:'#8f8b80', hoodie:'#5f584f', hoodieShade:'#4a443c', skin:'#d4a684', hair:'#2e2620', pants:'#8f877b', blush:'#e08f75', cup:'#3d3929', steam:'#8f8b80', signal:'#cf222e', board:'#3d3929', screen:'#e9f5e3', code:['#d97757','#b4532f','#5a8f55','#8f8b80'], ground:'#d6d2c4', grain:'60,50,40', note:'#c15f3c', cat:'#8f8b80' },
 };
 let RIDER = 1; const RIDER_SIZES = [[1, "Rider: normal"], [1.3, "Rider: bigger"], [1.6, "Rider: biggest"]]; let riderIx = 0;
-let useGreen = false, coderMode = 2, TS = 1.8, riderMode = 0;
-const SIZES = [[1, 'Train: small'], [1.4, 'Train: medium'], [1.8, 'Train: large']]; let sizeIx = 2;
+let useGreen = false, coderMode = 2, TS = 1.4, riderMode = 0;
+const SIZES = [[1, 'Train: small'], [1.4, 'Train: medium'], [1.8, 'Train: large']]; let sizeIx = 1;
 const CODER_NAMES = ['Coder: on the roof', 'Coder: screen-lit window', 'Coder: none'];
 const sq = () => useGreen ? P.green : P.cells;
 let P = PAL.dark, paused = false, pauseAt = 0, offset = 0;

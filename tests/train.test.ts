@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { calendarFromSample } from '../src/data/calendar.js';
 import { buildLayout } from '../src/scene/layout.js';
 import { PALETTES } from '../src/scene/palette.js';
-import { CYCLE, TRAIN_DURATION, TRAIN_START } from '../src/scene/constants.js';
+import { CYCLE, RIDER_SCALE, TRAIN_DURATION, TRAIN_SCALE, TRAIN_START } from '../src/scene/constants.js';
 import { KeyframeSheet } from '../src/svg/keyframes.js';
 import { train, trainNoseAt } from '../src/svg/train.js';
 import { crossing, lampOn, SIGNAL_OFFSET } from '../src/svg/crossing.js';
@@ -11,6 +11,11 @@ import { crossing, lampOn, SIGNAL_OFFSET } from '../src/svg/crossing.js';
 const layout = buildLayout(calendarFromSample(JSON.parse(readFileSync(new URL('./fixtures/sample-calendar.json', import.meta.url), 'utf8'))));
 
 describe('train', () => {
+  it('uses the medium train with the normal rider', () => {
+    expect(TRAIN_SCALE).toBe(1.4);
+    expect(RIDER_SCALE).toBe(1);
+  });
+
   it('train enters and leaves within the loop', () => {
     expect(trainNoseAt(TRAIN_START - 0.1, layout)).toBeNull();
     const mid = trainNoseAt(TRAIN_START + 7.5, layout);

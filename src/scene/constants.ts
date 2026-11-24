@@ -16,7 +16,7 @@ export const GTOP = DECK + 10;
 export const GH = 7 * PITCH - 2;
 export const BOTTOM = 10;
 
-export const TRAIN_SCALE = 1.8;
+export const TRAIN_SCALE = 1.4;
 export const RIDER_SCALE = 1;
 
 /** Loop phases in seconds. */
