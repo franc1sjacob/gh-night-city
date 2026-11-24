@@ -52,7 +52,7 @@ The canvas is one row of the city plus the grid. Proportions, in the mock's unit
 
 - Squares: 12 × 12, pitch 14, corner radius 2.5, only **active days** are drawn (empty days are blank). 53 weeks wide, 7 rows tall.
 - Sky area of 84 above an elevated track; the grid starts just below the track.
-- Overall roughly 762 × 222.
+- Overall 760 × 224.
 
 ### Palette (flat, Claude-like)
 
