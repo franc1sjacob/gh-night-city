@@ -1,0 +1,41 @@
+# Copy to .github/workflows/night-city.yml in your profile repository (the one named after your username).
+name: Night city
+
+on:
+  schedule:
+    - cron: '30 0 * * *'   # daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  night-city:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: franc1sjacob/gh-night-city@v1
+        with:
+          # The built-in token counts public contributions. Use a personal access token
+          # stored as a secret (for example secrets.NIGHT_CITY_TOKEN) to include private ones.
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          output-dir: ${{ runner.temp }}/night-city
+          # sign-text: coding 24/7
+
+      # The SVGs live on their own branch as a single commit that is replaced on each change,
+      # so they don't add to the history of your main branch.
+      - name: Publish to the night-city branch
+        run: |
+          git fetch --quiet --depth 1 origin night-city:refs/remotes/origin/night-city 2>/dev/null || true # not there on the first run
+          git switch --quiet --orphan night-city
+          cp "$RUNNER_TEMP"/night-city/*.svg .
+          git add -- night-city-*.svg
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit --quiet -m 'Update night city'
+          if git rev-parse --quiet --verify origin/night-city >/dev/null && git diff --quiet origin/night-city HEAD; then
+            echo "No changes"
+            exit 0
+          fi
+          git push --force origin night-city
