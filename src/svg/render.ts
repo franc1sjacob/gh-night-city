@@ -5,6 +5,8 @@ import { KeyframeSheet } from './keyframes.js';
 import { sky } from './sky.js';
 import { skyline } from './skyline.js';
 import { squares } from './squares.js';
+import { crossing } from './crossing.js';
+import { train } from './train.js';
 
 export interface RenderOptions {
   signText: string;
@@ -14,7 +16,7 @@ export interface RenderOptions {
 export function renderSvg(layout: Layout, theme: Theme, _options: RenderOptions): string {
   const p = PALETTES[theme];
   const kf = new KeyframeSheet();
-  const parts: Fragment[] = [sky(layout, p, kf), skyline(layout, p, kf), squares(layout, p, kf)];
+  const parts: Fragment[] = [sky(layout, p, kf), skyline(layout, p, kf), crossing(layout, p, kf), train(layout, p, kf), squares(layout, p, kf)];
   const { defs, body } = joinFragments(parts);
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${layout.width} ${layout.height}" width="${layout.width}" height="${layout.height}" role="img">` +
