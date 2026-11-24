@@ -99,3 +99,7 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 ```
+
+## Bundled libraries
+
+`dist/index.js` bundles @actions/core, @actions/exec, @actions/http-client, @actions/io, opentype.js, tunnel and undici (all MIT). Their full license texts are in [`dist/THIRD_PARTY_LICENSES.txt`](dist/THIRD_PARTY_LICENSES.txt), regenerated on every build.

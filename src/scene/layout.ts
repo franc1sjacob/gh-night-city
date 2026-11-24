@@ -57,7 +57,8 @@ export function buildLayout(cal: Calendar): Layout {
   const catAt = order.find((i) => Math.abs(i - tallest) > 4) ?? tallest;
 
   const lo = Math.round(W * 0.45), hi = Math.min(W, Math.round(W * 0.72));
-  let boardAt = lo;
+  // Busiest week in the middle stretch, never the cat's building (the billboard would cover the cat).
+  let boardAt = lo === catAt && lo + 1 < hi ? lo + 1 : lo;
   for (let i = lo; i < hi; i++) if (i !== catAt && sums[i] > sums[boardAt]) boardAt = i;
 
   const k = width / MOCK_WIDTH;

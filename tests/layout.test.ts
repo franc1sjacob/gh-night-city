@@ -68,3 +68,13 @@ describe('square timing split', () => {
     }
   });
 });
+
+describe('placement', () => {
+  it('billboard never lands on the cat building', () => {
+    // tallest week outside the billboard range, the cat's (second tallest) week exactly at the start of the range
+    const cal = synthetic(53, 7, 7, (i) => (i === 10 ? 100 : i === 24 ? 90 : 1));
+    const l = buildLayout(cal);
+    expect(l.catAt).toBe(24);
+    expect(l.boardAt).not.toBe(l.catAt);
+  });
+});
