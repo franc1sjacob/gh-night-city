@@ -1,0 +1,26 @@
+name: gh-night-city
+description: Your contribution graph as a lofi night city
+author: franc1sjacob
+branding:
+  icon: moon
+  color: orange
+inputs:
+  github-token:
+    description: Token used to read the contribution calendar. Pass a personal access token to include private contributions.
+    required: false
+    default: ${{ github.token }}
+  username:
+    description: Whose contribution calendar to draw. Defaults to the repository owner.
+    required: false
+    default: ''
+  output-dir:
+    description: Directory the two SVGs (night-city-dark.svg and night-city-light.svg) are written to.
+    required: false
+    default: dist
+  sign-text:
+    description: Text that scrolls across the rooftop billboard (up to 40 characters).
+    required: false
+    default: coding 24/7
+runs:
+  using: node24
+  main: dist/index.js
