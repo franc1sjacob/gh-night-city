@@ -6,10 +6,21 @@ import { lightsOn, night, rise } from '../scene/timeline.js';
 import { n, type Fragment } from './fragment.js';
 import type { KeyframeSheet } from './keyframes.js';
 
-/** Keyframe class that raises building `week` out from behind the track; shared with anything sitting on it. */
-export function riseClass(layout: Layout, kf: KeyframeSheet, week: number): string {
+/**
+ * Keyframe class that raises building `week` out from behind the track; shared with anything sitting on it.
+ * Until the rise passes `hideUntil`, the building is pushed 25 px further down so roof boxes and the billboard
+ * (which stick out above the roof) stay hidden, like the mock, which doesn't draw them at all then.
+ */
+export function riseClass(layout: Layout, kf: KeyframeSheet, week: number, hideUntil = 0): string {
   const h = layout.buildings[week].h;
-  return kf.sample((t) => h * (1 - rise(t, week, layout.weeks)), (v) => `transform:translateY(${v}px)`, { tol: 0.4, digits: 1 });
+  return kf.sample(
+    (t) => {
+      const r = rise(t, week, layout.weeks);
+      return r <= hideUntil ? h + 25 : h * (1 - r);
+    },
+    (v) => `transform:translateY(${v}px)`,
+    { tol: 0.4, digits: 1 },
+  );
 }
 
 /** Buildings with lit windows rising behind the track, and the track itself. */

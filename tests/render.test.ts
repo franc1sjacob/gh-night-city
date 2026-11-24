@@ -57,3 +57,16 @@ describe('renderSvg', () => {
     expect(Buffer.byteLength(light)).toBeLessThan(500_000);
   });
 });
+
+import { riseClass } from '../src/svg/skyline.js';
+describe('evening state', () => {
+  it('nothing on a building shows above the track before it rises', () => {
+    const kf = new KeyframeSheet();
+    for (const week of [0, layout.boardAt]) {
+      const name = riseClass(layout, kf, week, week === layout.boardAt ? 0.02 : 0);
+      const first = kf.css().match(new RegExp(`@keyframes ${name}\\{0%\\{transform:translateY\\(([\\d.]+)px\\)`))![1];
+      // the billboard sits 17 px above its roof, roof boxes 3 px: the whole stack must start below the deck
+      expect(Number(first)).toBeGreaterThanOrEqual(layout.buildings[week].h + 18);
+    }
+  });
+});

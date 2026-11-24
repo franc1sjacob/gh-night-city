@@ -33,7 +33,7 @@ export function billboard(layout: Layout, p: Palette, kf: KeyframeSheet, signTex
   return {
     defs: `<clipPath id="sign"><rect x="${n(x + 2)}" y="${n(by + 1.5)}" width="${PANEL}" height="9"/></clipPath>`,
     body:
-      `<g clip-path="url(#above-track)"><g class="${riseClass(layout, kf, i)}">` +
+      `<g clip-path="url(#above-track)"><g class="${riseClass(layout, kf, i, 0.02)}">` +
       `<g fill="${p.cityEdge}"><rect x="${bx + 2}" y="${n(by + 11)}" width="2" height="6"/><rect x="${bx + PITCH - 4}" y="${n(by + 11)}" width="2" height="6"/>` +
       `<rect x="${bx + 1}" y="${n(by + 14)}" width="${PITCH - 2}" height="1.2"/><rect x="${n(x)}" y="${n(by)}" width="52" height="12"/></g>` +
       `<rect x="${n(x + 1.5)}" y="${n(by + 1.5)}" width="49" height="9" fill="${p.board}"/>` +
